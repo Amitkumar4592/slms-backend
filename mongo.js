@@ -1,6 +1,6 @@
 const { MongoClient, ObjectId } = require('mongodb');
 
-const uri = 'mongodb://localhost:27017/slms';
+const uri = process.env.MONGO_URI; // Use Mongo URI from environment variable
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 async function connectToMongoDB() {
@@ -10,7 +10,7 @@ async function connectToMongoDB() {
         const db = client.db('Project');
         return {
             usersCollection: db.collection('Registrations'),
-            leaveCollection: db.collection('LeaveRequests'), // New collection for leave requests
+            leaveCollection: db.collection('LeaveRequests'),
         };
     } catch (err) {
         console.error(err);

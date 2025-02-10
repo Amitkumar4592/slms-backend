@@ -1,7 +1,6 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -19,5 +18,15 @@
     "multer-gridfs-storage": "^5.0.2",
     "sharp": "^0.33.4",
     "twilio": "^5.3.2"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amitkumar4592/slms-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Amitkumar4592/slms-backend/issues"
+  },
+  "homepage": "https://github.com/Amitkumar4592/slms-backend#readme",
+  "description": ""
 }

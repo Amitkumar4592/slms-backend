@@ -6,7 +6,7 @@ const connectToMongoDB = require('./mongo');
 const client = require('./twilio');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;  // Use dynamic port for Render deployment
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -16,7 +16,7 @@ const sendSms = (phone, message) => {
     client.messages
         .create({
             body: message,
-            from: '+13342924365', // Replace with your Twilio phone number
+            from: process.env.TWILIO_PHONE_NUMBER, // Use the Twilio phone number from environment variable
             to: phone,
         })
         .then(message => console.log(`SMS sent: ${message.sid}`))
@@ -31,7 +31,6 @@ app.post('/login', async (req, res) => {
         const { usersCollection } = await connectToMongoDB();
         const user = await usersCollection.findOne({ email });
         if (user && password === user.password && type === user.type) {
-            // Send back user data including the class
             const { class: userClass } = user; // Get the teacher's class from the user object
             res.status(200).json({ ...user, class: userClass }); // Include class in response
         } else {
@@ -66,6 +65,7 @@ app.get('/studentData', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 app.post('/applyLeave', async (req, res) => {
     const { name, rollNumber, studentClass, leaveDescription, leaveDays, email, department } = req.body;
 
@@ -82,7 +82,7 @@ app.post('/applyLeave', async (req, res) => {
         const leaveApplication = {
             name,
             rollNumber,
-            class: studentClass, // Ensure this matches the class the teacher is fetching
+            class: studentClass,
             email,
             leaveDescription,
             leaveDays,
@@ -105,8 +105,6 @@ app.post('/applyLeave', async (req, res) => {
     }
 });
 
-
-
 // Get leave requests by student email
 app.get('/studentLeaveRequests', async (req, res) => {
     const { email } = req.query;
@@ -123,7 +121,7 @@ app.get('/studentLeaveRequests', async (req, res) => {
 
 // Get leave history
 app.get('/leaveHistory', async (req, res) => {
-    const { email } = req.query; 
+    const { email } = req.query;
 
     try {
         const { leaveCollection } = await connectToMongoDB();
@@ -135,13 +133,14 @@ app.get('/leaveHistory', async (req, res) => {
     }
 });
 
+// View leave requests for Teacher
 app.get('/viewLeaveRequests', async (req, res) => {
-    const { class: teacherClass } = req.query; // Use 'class' as a parameter key
+    const { class: teacherClass } = req.query;
 
     try {
         const { leaveCollection } = await connectToMongoDB();
-        const leaveRequests = await leaveCollection.find({ class: teacherClass, status: 'Pending' }).toArray(); // Filter by class and status
-        console.log(`Fetched leave requests for class ${teacherClass}:`, leaveRequests); // Debug line
+        const leaveRequests = await leaveCollection.find({ class: teacherClass, status: 'Pending' }).toArray();
+        console.log(`Fetched leave requests for class ${teacherClass}:`, leaveRequests); 
         res.status(200).json(leaveRequests);
     } catch (error) {
         console.error('Error fetching leave requests:', error);
@@ -149,17 +148,16 @@ app.get('/viewLeaveRequests', async (req, res) => {
     }
 });
 
-
 // Route to update leave request status for Teacher
 app.post('/updateLeaveRequest', async (req, res) => {
-    const { requestId, action } = req.body; // Expecting { requestId, action }
+    const { requestId, action } = req.body;
 
     try {
-        const { leaveCollection, usersCollection } = await connectToMongoDB(); // Ensure both collections are retrieved
+        const { leaveCollection, usersCollection } = await connectToMongoDB();
 
         const updateResult = await leaveCollection.updateOne(
             { _id: new ObjectId(requestId) },
-            { $set: { status: action } } // action should be "accept", "reject", or "forward"
+            { $set: { status: action } }
         );
 
         if (updateResult.modifiedCount === 0) {
@@ -180,7 +178,7 @@ app.post('/updateLeaveRequest', async (req, res) => {
                 smsMessage = 'Your leave request has been forwarded to the HOD.';
             }
 
-            sendSms(student.phone, smsMessage); // Send SMS notification
+            sendSms(student.phone, smsMessage); 
         }
 
         res.json({ message: 'Leave request updated successfully.' });
@@ -192,14 +190,14 @@ app.post('/updateLeaveRequest', async (req, res) => {
 
 // Similarly, update the HOD update endpoint
 app.post('/hod/updateLeaveRequest', async (req, res) => {
-    const { requestId, action } = req.body; // Expecting { requestId, action }
+    const { requestId, action } = req.body;
 
     try {
-        const { leaveCollection, usersCollection } = await connectToMongoDB(); // Ensure both collections are retrieved
+        const { leaveCollection, usersCollection } = await connectToMongoDB();
 
         const updateResult = await leaveCollection.updateOne(
             { _id: new ObjectId(requestId) },
-            { $set: { status: action } } // Update status to either "acceptedbyhod" or "rejectedbyhod"
+            { $set: { status: action } }
         );
 
         if (updateResult.modifiedCount === 0) {
@@ -218,7 +216,7 @@ app.post('/hod/updateLeaveRequest', async (req, res) => {
                 smsMessage = 'Your leave request has been rejected by the HOD.';
             }
 
-            sendSms(student.phone, smsMessage); // Send SMS notification
+            sendSms(student.phone, smsMessage);
         }
 
         res.json({ message: 'Leave request updated successfully.' });
@@ -228,11 +226,8 @@ app.post('/hod/updateLeaveRequest', async (req, res) => {
     }
 });
 
-
 // View leave requests for HOD
 app.get('/hod/viewLeaveRequests', async (req, res) => {
-   
-
     try {
         const { leaveCollection } = await connectToMongoDB();
         const leaveRequests = await leaveCollection.find({ status: 'forward' }).toArray();
@@ -243,7 +238,6 @@ app.get('/hod/viewLeaveRequests', async (req, res) => {
     }
 });
 
-
 // Fetch leave requests with status 'acceptedbyhod' or 'rejectedbyhod' for HOD
 app.get('/hod/leaveHistory', async (req, res) => {
     try {
@@ -251,7 +245,7 @@ app.get('/hod/leaveHistory', async (req, res) => {
         const leaveRequests = await leaveCollection.find({
             status: { $in: ['acceptedbyhod', 'rejectedbyhod'] }
         }).toArray();
-        
+
         res.status(200).json(leaveRequests);
     } catch (error) {
         console.error('Error fetching leave history:', error);
@@ -298,5 +292,5 @@ app.get('/teacherData', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server is running on port ${port}`);
 });
